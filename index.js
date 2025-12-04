@@ -27,21 +27,17 @@ app.get('/api/scrape-kse100', async (req, res) => {
         });
 
         const page = await browser.newPage();
-        console.log('Navigating to PSX...');
+        console.log('Navigating to Sarmaaya...');
 
-        await page.goto('https://dps.psx.com.pk/', {
+        await page.goto('https://sarmaaya.pk/stocks?indice=KSE100&limit=250', {
             waitUntil: 'networkidle0',
             timeout: 60000
         });
 
-        console.log('Waiting for dropdown...');
-        await page.waitForSelector('select', { timeout: 10000 });
+        console.log('Waiting for table...');
+        await page.waitForSelector('table', { timeout: 15000 });
 
-        console.log('Selecting KSE100...');
-        // Select KSE100 from the INDEX dropdown
-        await page.select('select', 'KSE100');
-
-        // Wait for table to update
+        // Wait a bit more for data to load
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log('Extracting stock data...');
@@ -53,39 +49,27 @@ app.get('/api/scrape-kse100', async (req, res) => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 2) return null;
 
-                const symbol = cells[0]?.textContent?.trim() || '';
-                const current = cells[6]?.textContent?.trim() || '0'; // CURRENT column
-                const price = parseFloat(current.replace(/,/g, ''));
+                // First column contains symbol (div) and name (p)
+                const firstCell = cells[0];
+                const symbol = firstCell.querySelector('div')?.textContent?.trim() || '';
+                const name = firstCell.querySelector('p')?.textContent?.trim() || '';
 
-                if (!symbol || isNaN(price) || price === 0) return null;
+                // Second column "Curr." contains current price
+                const priceText = cells[1]?.textContent?.trim() || '0';
+                const price = parseFloat(priceText.replace(/,/g, ''));
 
-                return { symbol, price };
+                if (!symbol || !name || isNaN(price) || price === 0) return null;
+
+                return { symbol, name, price };
             }).filter(stock => stock !== null);
         });
 
-        console.log(`Scraped ${stocks.length} stocks`);
-
-        // Get company names from the symbols endpoint
-        const symbolsResponse = await fetch('https://dps.psx.com.pk/symbols');
-        const symbolsData = await symbolsResponse.json();
-
-        // Map symbols to names
-        const symbolMap = {};
-        symbolsData.forEach(item => {
-            symbolMap[item.symbol] = item.name;
-        });
-
-        // Combine price data with names
-        const enrichedStocks = stocks.map(stock => ({
-            symbol: stock.symbol,
-            name: symbolMap[stock.symbol] || stock.symbol,
-            price: stock.price
-        }));
+        console.log(`Scraped ${stocks.length} stocks from Sarmaaya`);
 
         res.json({
             success: true,
-            count: enrichedStocks.length,
-            stocks: enrichedStocks,
+            count: stocks.length,
+            stocks: stocks,
             timestamp: new Date().toISOString()
         });
 
