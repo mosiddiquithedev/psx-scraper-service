@@ -42,7 +42,7 @@ app.get('/api/scrape-kse100', async (req, res) => {
         await page.select('select', 'KSE100');
 
         // Wait for table to update
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log('Extracting stock data...');
         // Extract stock data from the table
