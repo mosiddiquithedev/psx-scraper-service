@@ -1,5 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const cors = require('cors');
 
 const app = express();
@@ -20,16 +21,9 @@ app.get('/api/scrape-kse100', async (req, res) => {
     try {
         console.log('Starting browser...');
         browser = await puppeteer.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
             headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu'
-            ]
         });
 
         const page = await browser.newPage();
